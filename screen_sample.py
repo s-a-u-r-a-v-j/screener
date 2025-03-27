@@ -1,44 +1,45 @@
 import streamlit as st
 from fyers_apiv3 import fyersModel
+import json
 import os
 
-# Load access token from file
+# File where the access token is stored
 access_token_file = "access_token.json"
 
+# Check if access token file exists
 if not os.path.exists(access_token_file):
-    st.error("❌ Access token file NOT found! Please log in using Login.py first.")
-else:
-    with open(access_token_file, "r") as f:
-        access_token = f.read().strip()  # Read token as string
+    st.error("❌ Access token file NOT found! Please log in using `Login.py` first.")
+    st.stop()
 
-    if not access_token:
-        st.error("❌ Access token is EMPTY! Please log in again using Login.py.")
-    else:
-        st.success("✅ Access token loaded successfully!")
-        st.write(f"🔑 Access Token: {access_token}")  # Debugging line
+# Load the access token
+with open(access_token_file, "r") as f:
+    access_token = json.load(f)
 
-        # Initialize Fyers API
-        fyers = fyersModel.FyersModel(client_id="your_api_key_here", token=access_token, log_path="")
+if not access_token:
+    st.error("❌ Access token is empty! Please re-run `Login.py`.")
+    st.stop()
 
-        # Hardcoded stock symbols for testing
-        stock_symbols = ["NSE:INFY", "NSE:TCS", "NSE:HDFCBANK", "NSE:RELIANCE", "NSE:ITC"]
+# Initialize Fyers API
+fyers = fyersModel.FyersModel(client_id="your_api_key_here", token=access_token, log_path="")
 
-        # Fetch real-time data
-        st.title("📊 Live Stock Prices - Fyers API")
-        if st.button("Fetch Live Prices"):
-            try:
-                data = fyers.quotes({'symbols': ",".join(stock_symbols)})
-                if data["s"] == "ok":
-                    results = data["d"]
-                    table_data = []
-                    for stock in results:
-                        symbol = stock["n"]
-                        price = stock["v"]["lp"]  # Last traded price
-                        table_data.append([symbol, price])
+# Hardcoded stock symbols for testing
+stock_symbols = ["NSE:INFY", "NSE:TCS", "NSE:HDFCBANK", "NSE:RELIANCE", "NSE:ITC"]
 
-                    # Display in Streamlit
-                    st.table(table_data)
-                else:
-                    st.error(f"⚠️ Error fetching data: {data}")
-            except Exception as e:
-                st.error(f"❌ Failed to fetch data: {e}")
+# Streamlit UI
+st.title("📊 Live Stock Prices - Fyers API")
+
+if st.button("Fetch Live Prices"):
+    try:
+        data = fyers.quotes({'symbols': ",".join(stock_symbols)})
+        
+        if data.get("s") == "ok":
+            results = data["d"]
+            table_data = [[stock["n"], stock["v"]["lp"]] for stock in results]  # Extract symbol & price
+            
+            # Display in Streamlit
+            st.table(table_data)
+        else:
+            st.error("❌ Error fetching data from Fyers API.")
+    
+    except Exception as e:
+        st.error(f"❌ Failed to fetch data: {e}")
