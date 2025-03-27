@@ -13,11 +13,14 @@ access_token_file = f"AccessToken/{datetime.datetime.now().date()}.json"
 st.title("🔐 Fyers API Login")
 st.sidebar.header("Login Details")
 
-# Load or prompt for login credentials
+# Load credentials if they exist, else initialize empty
+login_credential = {}
 if os.path.exists(CREDENTIALS_FILE):
     with open(CREDENTIALS_FILE, "r") as f:
         login_credential = json.load(f)
-else:
+
+# Ensure required keys are present
+if not login_credential.get("api_key") or not login_credential.get("api_secret") or not login_credential.get("redirect_url"):
     st.sidebar.warning("⚠️ Fyers login details missing!")
     api_key = st.sidebar.text_input("API Key")
     api_secret = st.sidebar.text_input("API Secret", type="password")
@@ -34,22 +37,10 @@ else:
         st.sidebar.success("✅ Credentials saved! Restart app.")
         st.stop()
 
-# Check if access token exists
-access_token = None
-if os.path.exists(access_token_file):
-    with open(access_token_file, "r") as f:
-        access_token = json.load(f)
-
-    # Validate token
-    fyers = fyersModel.FyersModel(client_id=login_credential["api_key"], token=access_token, log_path="")
-    response = fyers.get_profile()
-    if response.get("s") == "ok":
-        st.success("✅ Valid access token found!")
-        st.write(f"🔑 **Access Token:** {access_token}")
-        st.stop()
-    else:
-        st.warning("⚠️ Access token expired. Please log in again.")
-        access_token = None
+# Ensure login credentials are now available
+if not login_credential:
+    st.error("❌ Login credentials not found. Please enter them in the sidebar.")
+    st.stop()
 
 # Generate login URL
 st.subheader("🔗 Step 1: Login to Fyers")
@@ -93,4 +84,3 @@ if st.button("Get Access Token"):
 
     else:
         st.error("❌ Invalid URL! Make sure you copied the full redirected URL.")
-
